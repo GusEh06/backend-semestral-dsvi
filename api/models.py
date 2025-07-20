@@ -4,13 +4,16 @@ from decouple import config
 from django.contrib.auth.hashers import make_password, check_password
 
 
-# Clave de encriptación desde .env
+# ==============================
+# 🔑 Clave de encriptación desde .env
+# ==============================
 CLAVE_ENCRIPTACION = config('CLAVE_ENCRIPTACION')
 fernet = Fernet(CLAVE_ENCRIPTACION)
 
 
-
-# Funciones para cifrar y descifrar
+# ==============================
+# 🔐 Funciones para cifrar y descifrar
+# ==============================
 def encriptar(valor):
     """Encripta un valor antes de guardarlo en la BD."""
     if valor is None:
@@ -25,7 +28,9 @@ def desencriptar(valor):
     return fernet.decrypt(valor.encode()).decode()
 
 
-# Campo personalizado encriptado
+# ==============================
+# 🔒 Campo personalizado encriptado
+# ==============================
 class CampoEncriptado(models.TextField):
     """Campo de texto que se encripta automáticamente en la BD."""
 
@@ -40,8 +45,9 @@ class CampoEncriptado(models.TextField):
         return value
 
 
-
-# MODELOS
+# ==============================
+# 📄 MODELOS
+# ==============================
 
 class Visitante(models.Model):
     cedula_pasaporte = CampoEncriptado(max_length=255)
@@ -90,19 +96,16 @@ class Encuesta(models.Model):
         return f"Encuesta para visita {self.visita.id}"
 
 
-class RolUsuario(models.Model):
-    nombre_rol = models.CharField(max_length=50)
-
-    def __str__(self):
-        return self.nombre_rol
-
-
 class Usuario(models.Model):
-    rol = models.ForeignKey(RolUsuario, on_delete=models.CASCADE)
+    class Rol(models.TextChoices):
+        ADMIN = "admin", "Administrador"
+        USER = "user", "Usuario"
+
     email = CampoEncriptado(max_length=255)
     nombre = CampoEncriptado(max_length=255)
     apellido = CampoEncriptado(max_length=255)
     contraseña = models.CharField(max_length=255)  # Se almacena hasheada
+    rol = models.CharField(max_length=5, choices=Rol.choices, default=Rol.USER)
 
     def save(self, *args, **kwargs):
         # Hashear contraseña solo si es nueva o modificada
@@ -111,7 +114,7 @@ class Usuario(models.Model):
         super().save(*args, **kwargs)
 
     def verificar_contraseña(self, contraseña_plana):
-        """Verifica si la contraseña ingresada coincide con el hash almacenado"""
+        """Verifica si la contraseña ingresada coincide con el hash"""
         return check_password(contraseña_plana, self.contraseña)
 
     def __str__(self):
@@ -123,6 +126,7 @@ class Comentario(models.Model):
     sendero = models.ForeignKey(Sendero, on_delete=models.CASCADE)
     foto_comentario = models.CharField(max_length=255, blank=True, null=True)
     comentario = models.TextField()
+    valoracion = models.PositiveSmallIntegerField()
 
     def __str__(self):
         return f"Comentario de {self.usuario.nombre} en {self.sendero.nombre_sendero}"
